@@ -188,7 +188,7 @@ tr22:
                 if err != nil {
                     vl = 0
                 }
-                lval.uinteger = uint(vl); tok = ICONST; {( lex.p)++;  lex.cs = 4; goto _out }    
+                lval.uinteger = uint64(vl); tok = ICONST; {( lex.p)++;  lex.cs = 4; goto _out }    
             }
 	goto st4
 	st4:

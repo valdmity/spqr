@@ -82,7 +82,7 @@ func (lex *Lexer) Lex(lval *yySymType) int {
                 if err != nil {
                     vl = 0
                 }
-                lval.uinteger = uint(vl); tok = ICONST; fbreak;    
+                lval.uinteger = uint64(vl); tok = ICONST; fbreak;    
             };
 
 
