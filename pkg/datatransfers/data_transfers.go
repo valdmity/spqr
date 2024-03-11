@@ -3,18 +3,20 @@ package datatransfers
 import (
 	"context"
 	"fmt"
-	"github.com/jackc/pgx/v5"
-	_ "github.com/lib/pq"
-	"github.com/pg-sharding/spqr/coordinator"
-	"github.com/pg-sharding/spqr/pkg/config"
-	"github.com/pg-sharding/spqr/pkg/models/distributions"
-	"github.com/pg-sharding/spqr/pkg/models/kr"
-	"github.com/pg-sharding/spqr/pkg/spqrlog"
-	"github.com/pg-sharding/spqr/qdb"
 	"io"
 	"os"
 	"strings"
 	"sync"
+
+	"github.com/pg-sharding/spqr/pkg/models/distributions"
+
+	pgx "github.com/jackc/pgx/v5"
+	_ "github.com/lib/pq"
+	"github.com/pg-sharding/spqr/coordinator"
+	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/pg-sharding/spqr/qdb"
 )
 
 type MoveTableRes struct {
@@ -165,9 +167,10 @@ func resolveNextBound(ctx context.Context, krg *kr.KeyRange, cr coordinator.Coor
 	if err != nil {
 		return nil, err
 	}
+	ds, err := cr.GetDistribution(ctx, krg.Distribution)
 	var bound kr.KeyRangeBound
 	for _, kRange := range krs {
-		if kr.CmpRangesLess(krg.LowerBound, kRange.LowerBound) && (bound == nil || kr.CmpRangesLess(kRange.LowerBound, bound)) {
+		if kr.CmpRangesLess(krg.LowerBound, kRange.LowerBound, ds.ColTypes) && (bound == nil || kr.CmpRangesLess(kRange.LowerBound, bound, ds.ColTypes)) {
 			bound = kRange.LowerBound
 		}
 	}

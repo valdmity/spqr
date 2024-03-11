@@ -131,6 +131,9 @@ func TestComment(t *testing.T) {
 
 	_ = db.CreateDistribution(context.TODO(), &qdb.Distribution{
 		ID: distribution,
+		ColTypes: []string{
+			qdb.ColumnTypeInteger,
+		},
 		Relations: map[string]*qdb.DistributedRelation{
 			"xx": {
 				Name: "xx",
@@ -143,21 +146,31 @@ func TestComment(t *testing.T) {
 		},
 	})
 
-	err := db.CreateKeyRange(context.TODO(), &qdb.KeyRange{
-		ShardID:        "sh1",
-		DistributionId: distribution,
-		KeyRangeID:     "id1",
-		LowerBound:     []byte("1"),
-	})
+	err := db.CreateKeyRange(context.TODO(), (&kr.KeyRange{
+		ShardID:      "sh1",
+		Distribution: distribution,
+		ID:           "id1",
+		LowerBound: kr.KeyRangeBound{
+			int64(1),
+		},
+		ColumnTypes: []string{
+			qdb.ColumnTypeInteger,
+		},
+	}).ToDB())
 
 	assert.NoError(err)
 
-	err = db.CreateKeyRange(context.TODO(), &qdb.KeyRange{
-		ShardID:        "sh2",
-		KeyRangeID:     "id2",
-		DistributionId: distribution,
-		LowerBound:     []byte("11"),
-	})
+	err = db.CreateKeyRange(context.TODO(), (&kr.KeyRange{
+		ShardID:      "sh2",
+		Distribution: distribution,
+		ID:           "id2",
+		LowerBound: kr.KeyRangeBound{
+			int64(11),
+		},
+		ColumnTypes: []string{
+			qdb.ColumnTypeInteger,
+		},
+	}).ToDB())
 
 	assert.NoError(err)
 
@@ -188,7 +201,10 @@ func TestComment(t *testing.T) {
 						ShardID:      "sh1",
 						ID:           "id1",
 						Distribution: distribution,
-						LowerBound:   []byte("1"),
+						LowerBound: []interface{}{
+							int64(1),
+						},
+						ColumnTypes: []string{qdb.ColumnTypeInteger},
 					},
 				},
 				TargetSessionAttrs: "any",
@@ -286,7 +302,10 @@ func TestCTE(t *testing.T) {
 						ShardID:      "sh1",
 						ID:           "id1",
 						Distribution: distribution,
-						LowerBound:   []byte("1"),
+						LowerBound: []interface{}{
+							int64(1),
+						},
+						ColumnTypes: []string{qdb.ColumnTypeInteger},
 					},
 				},
 				TargetSessionAttrs: "any",
@@ -314,7 +333,10 @@ func TestCTE(t *testing.T) {
 						ShardID:      "sh1",
 						ID:           "id1",
 						Distribution: distribution,
-						LowerBound:   []byte("1"),
+						LowerBound: []interface{}{
+							int64(1),
+						},
+						ColumnTypes: []string{qdb.ColumnTypeInteger},
 					},
 				},
 				TargetSessionAttrs: "any",
@@ -347,6 +369,9 @@ func TestSingleShard(t *testing.T) {
 
 	_ = db.CreateDistribution(context.TODO(), &qdb.Distribution{
 		ID: distribution,
+		ColTypes: []string{
+			qdb.ColumnTypeInteger,
+		},
 		Relations: map[string]*qdb.DistributedRelation{
 			"t": {
 				Name: "t",
@@ -391,21 +416,31 @@ func TestSingleShard(t *testing.T) {
 		},
 	})
 
-	err := db.CreateKeyRange(context.TODO(), &qdb.KeyRange{
-		ShardID:        "sh1",
-		DistributionId: distribution,
-		KeyRangeID:     "id1",
-		LowerBound:     []byte("1"),
-	})
+	err := db.CreateKeyRange(context.TODO(), (&kr.KeyRange{
+		ShardID:      "sh1",
+		Distribution: distribution,
+		ID:           "id1",
+		LowerBound: kr.KeyRangeBound{
+			int64(1),
+		},
+		ColumnTypes: []string{
+			qdb.ColumnTypeInteger,
+		},
+	}).ToDB())
 
 	assert.NoError(err)
 
-	err = db.CreateKeyRange(context.TODO(), &qdb.KeyRange{
-		ShardID:        "sh2",
-		DistributionId: distribution,
-		KeyRangeID:     "id2",
-		LowerBound:     []byte("11"),
-	})
+	err = db.CreateKeyRange(context.TODO(), (&kr.KeyRange{
+		ShardID:      "sh2",
+		Distribution: distribution,
+		ID:           "id2",
+		LowerBound: kr.KeyRangeBound{
+			int64(11),
+		},
+		ColumnTypes: []string{
+			qdb.ColumnTypeInteger,
+		},
+	}).ToDB())
 
 	assert.NoError(err)
 
@@ -425,6 +460,55 @@ func TestSingleShard(t *testing.T) {
 	assert.NoError(err)
 
 	for _, tt := range []tcase{
+		{
+			query: "SELECT * FROM xxtt1 a WHERE a.i = 21 and w_idj + w_idi != 0;",
+			exp: routingstate.ShardMatchState{
+				Route: &routingstate.DataShardRoute{
+					Shkey: kr.ShardKey{
+						Name: "sh2",
+					},
+					Matchedkr: &kr.KeyRange{
+						ShardID:      "sh2",
+						Distribution: distribution,
+						ID:           "id2",
+						LowerBound: []interface{}{
+							int64(11),
+						},
+
+						ColumnTypes: []string{
+							qdb.ColumnTypeInteger,
+						},
+					},
+				},
+				TargetSessionAttrs: "any",
+			},
+			err: nil,
+		},
+
+		{
+			query: "SELECT * FROM xxtt1 a WHERE a.i = '21' and w_idj + w_idi != 0;",
+			exp: routingstate.ShardMatchState{
+				Route: &routingstate.DataShardRoute{
+					Shkey: kr.ShardKey{
+						Name: "sh2",
+					},
+					Matchedkr: &kr.KeyRange{
+						ShardID:      "sh2",
+						Distribution: distribution,
+						ID:           "id2",
+						LowerBound: []interface{}{
+							int64(11),
+						},
+
+						ColumnTypes: []string{
+							qdb.ColumnTypeInteger,
+						},
+					},
+				},
+				TargetSessionAttrs: "any",
+			},
+			err: nil,
+		},
 
 		{
 			query: `
@@ -445,7 +529,14 @@ func TestSingleShard(t *testing.T) {
 						ShardID:      "sh1",
 						ID:           "id1",
 						Distribution: distribution,
-						LowerBound:   []byte("1"),
+						LowerBound: []interface{}{
+
+							int64(1),
+						},
+
+						ColumnTypes: []string{
+							qdb.ColumnTypeInteger,
+						},
 					},
 				},
 				TargetSessionAttrs: "any",
@@ -471,7 +562,14 @@ func TestSingleShard(t *testing.T) {
 						ShardID:      "sh1",
 						ID:           "id1",
 						Distribution: distribution,
-						LowerBound:   []byte("1"),
+						LowerBound: []interface{}{
+
+							int64(1),
+						},
+
+						ColumnTypes: []string{
+							qdb.ColumnTypeInteger,
+						},
 					},
 				},
 				TargetSessionAttrs: "any",
@@ -488,7 +586,13 @@ func TestSingleShard(t *testing.T) {
 						ShardID:      "sh1",
 						ID:           "id1",
 						Distribution: distribution,
-						LowerBound:   []byte("1"),
+						LowerBound: []interface{}{
+							int64(1),
+						},
+
+						ColumnTypes: []string{
+							qdb.ColumnTypeInteger,
+						},
 					},
 				},
 				TargetSessionAttrs: "any",
@@ -507,26 +611,13 @@ func TestSingleShard(t *testing.T) {
 						ShardID:      "sh2",
 						ID:           "id2",
 						Distribution: distribution,
-						LowerBound:   []byte("11"),
-					},
-				},
-				TargetSessionAttrs: "any",
-			},
-			err: nil,
-		},
+						LowerBound: []interface{}{
+							int64(11),
+						},
 
-		{
-			query: "SELECT * FROM xxtt1 a WHERE a.i = 21 and w_idj + w_idi != 0;",
-			exp: routingstate.ShardMatchState{
-				Route: &routingstate.DataShardRoute{
-					Shkey: kr.ShardKey{
-						Name: "sh2",
-					},
-					Matchedkr: &kr.KeyRange{
-						ShardID:      "sh2",
-						Distribution: distribution,
-						ID:           "id2",
-						LowerBound:   []byte("11"),
+						ColumnTypes: []string{
+							qdb.ColumnTypeInteger,
+						},
 					},
 				},
 				TargetSessionAttrs: "any",
@@ -544,7 +635,13 @@ func TestSingleShard(t *testing.T) {
 						ShardID:      "sh2",
 						ID:           "id2",
 						Distribution: distribution,
-						LowerBound:   []byte("11"),
+						LowerBound: []interface{}{
+							int64(11),
+						},
+
+						ColumnTypes: []string{
+							qdb.ColumnTypeInteger,
+						},
 					},
 				},
 				TargetSessionAttrs: "any",
@@ -563,7 +660,13 @@ func TestSingleShard(t *testing.T) {
 						ShardID:      "sh1",
 						ID:           "id1",
 						Distribution: distribution,
-						LowerBound:   []byte("1"),
+						LowerBound: []interface{}{
+							int64(1),
+						},
+
+						ColumnTypes: []string{
+							qdb.ColumnTypeInteger,
+						},
 					},
 				},
 				TargetSessionAttrs: "any",
@@ -585,7 +688,13 @@ func TestSingleShard(t *testing.T) {
 						ShardID:      "sh1",
 						ID:           "id1",
 						Distribution: distribution,
-						LowerBound:   []byte("1"),
+						LowerBound: []interface{}{
+							int64(1),
+						},
+
+						ColumnTypes: []string{
+							qdb.ColumnTypeInteger,
+						},
 					},
 				},
 				TargetSessionAttrs: "any",
@@ -604,7 +713,13 @@ func TestSingleShard(t *testing.T) {
 						ShardID:      "sh2",
 						ID:           "id2",
 						Distribution: distribution,
-						LowerBound:   []byte("11"),
+						LowerBound: []interface{}{
+							int64(11),
+						},
+
+						ColumnTypes: []string{
+							qdb.ColumnTypeInteger,
+						},
 					},
 				},
 				TargetSessionAttrs: "any",
@@ -623,7 +738,11 @@ func TestSingleShard(t *testing.T) {
 						ShardID:      "sh2",
 						ID:           "id2",
 						Distribution: distribution,
-						LowerBound:   []byte("11"),
+
+						LowerBound: []interface{}{
+							int64(11),
+						},
+						ColumnTypes: []string{qdb.ColumnTypeInteger},
 					},
 				},
 				TargetSessionAttrs: "any",
@@ -656,7 +775,8 @@ func TestInsertOffsets(t *testing.T) {
 	distribution := "dd"
 
 	_ = db.CreateDistribution(context.TODO(), &qdb.Distribution{
-		ID: distribution,
+		ID:       distribution,
+		ColTypes: []string{qdb.ColumnTypeInteger},
 		Relations: map[string]*qdb.DistributedRelation{
 			"xx": {
 				Name: "xx",
@@ -685,21 +805,25 @@ func TestInsertOffsets(t *testing.T) {
 		},
 	})
 
-	err := db.CreateKeyRange(context.TODO(), &qdb.KeyRange{
-		ShardID:        "sh1",
-		KeyRangeID:     "id1",
-		DistributionId: distribution,
-		LowerBound:     []byte("1"),
-	})
+	err := db.CreateKeyRange(context.TODO(), (&kr.KeyRange{
+		LowerBound: []interface{}{int64(1)},
+
+		ShardID:      "sh1",
+		Distribution: distribution,
+		ID:           "id1",
+		ColumnTypes:  []string{qdb.ColumnTypeInteger},
+	}).ToDB())
 
 	assert.NoError(err)
 
-	err = db.CreateKeyRange(context.TODO(), &qdb.KeyRange{
-		ShardID:        "sh2",
-		DistributionId: distribution,
-		KeyRangeID:     "id2",
-		LowerBound:     []byte("11"),
-	})
+	err = db.CreateKeyRange(context.TODO(), (&kr.KeyRange{
+		LowerBound: []interface{}{int64(11)},
+
+		ShardID:      "sh2",
+		Distribution: distribution,
+		ID:           "id2",
+		ColumnTypes:  []string{qdb.ColumnTypeInteger},
+	}).ToDB())
 
 	assert.NoError(err)
 
@@ -731,7 +855,11 @@ func TestInsertOffsets(t *testing.T) {
 						ShardID:      "sh2",
 						ID:           "id2",
 						Distribution: distribution,
-						LowerBound:   []byte("11"),
+
+						ColumnTypes: []string{qdb.ColumnTypeInteger},
+						LowerBound: []interface{}{
+							int64(11),
+						},
 					},
 				},
 				TargetSessionAttrs: "any",
@@ -741,7 +869,7 @@ func TestInsertOffsets(t *testing.T) {
 
 		{
 			query: `
-			INSERT INTO xxtt1 (j, i, w_id) VALUES(2121221, -211212, '21');
+			INSERT INTO xxtt1 (j, i, w_id) VALUES(2121221, -211212, 21);
 			`,
 			exp: routingstate.ShardMatchState{
 				Route: &routingstate.DataShardRoute{
@@ -752,7 +880,11 @@ func TestInsertOffsets(t *testing.T) {
 						ShardID:      "sh2",
 						ID:           "id2",
 						Distribution: distribution,
-						LowerBound:   []byte("11"),
+
+						ColumnTypes: []string{qdb.ColumnTypeInteger},
+						LowerBound: []interface{}{
+							int64(11),
+						},
 					},
 				},
 				TargetSessionAttrs: "any",
@@ -762,7 +894,7 @@ func TestInsertOffsets(t *testing.T) {
 
 		{
 			query: `
-			INSERT INTO "people" ("first_name","last_name","email","id") VALUES ('John','Smith','','1') RETURNING "id"`,
+			INSERT INTO "people" ("first_name","last_name","email","id") VALUES ('John','Smith','',1) RETURNING "id"`,
 			exp: routingstate.ShardMatchState{
 				Route: &routingstate.DataShardRoute{
 					Shkey: kr.ShardKey{
@@ -772,7 +904,11 @@ func TestInsertOffsets(t *testing.T) {
 						ShardID:      "sh1",
 						ID:           "id1",
 						Distribution: distribution,
-						LowerBound:   []byte("1"),
+
+						ColumnTypes: []string{qdb.ColumnTypeInteger},
+						LowerBound: []interface{}{
+							int64(1),
+						},
 					},
 				},
 				TargetSessionAttrs: "any",
@@ -792,7 +928,11 @@ func TestInsertOffsets(t *testing.T) {
 						ShardID:      "sh2",
 						ID:           "id2",
 						Distribution: distribution,
-						LowerBound:   []byte("11"),
+
+						ColumnTypes: []string{qdb.ColumnTypeInteger},
+						LowerBound: []interface{}{
+							int64(11),
+						},
 					},
 				},
 				TargetSessionAttrs: "any",
@@ -811,7 +951,11 @@ func TestInsertOffsets(t *testing.T) {
 						ShardID:      "sh1",
 						ID:           "id1",
 						Distribution: distribution,
-						LowerBound:   []byte("1"),
+
+						ColumnTypes: []string{qdb.ColumnTypeInteger},
+						LowerBound: []interface{}{
+							int64(1),
+						},
 					},
 				},
 				TargetSessionAttrs: "any",
@@ -845,7 +989,7 @@ func TestJoins(t *testing.T) {
 
 	_ = db.CreateDistribution(context.TODO(), &qdb.Distribution{
 		ID:       distribution,
-		ColTypes: []string{qdb.ColumnTypeVarchar},
+		ColTypes: []string{qdb.ColumnTypeInteger},
 		Relations: map[string]*qdb.DistributedRelation{
 			"sshjt1": {
 				Name: "sshjt1",
@@ -874,21 +1018,23 @@ func TestJoins(t *testing.T) {
 		},
 	})
 
-	err := db.CreateKeyRange(context.TODO(), &qdb.KeyRange{
-		ShardID:        "sh1",
-		KeyRangeID:     "id1",
-		DistributionId: distribution,
-		LowerBound:     []byte("1"),
-	})
+	err := db.CreateKeyRange(context.TODO(), (&kr.KeyRange{
+		ShardID:      "sh1",
+		Distribution: distribution,
+		ID:           "id1",
+		LowerBound:   []interface{}{int64(11)},
+		ColumnTypes:  []string{qdb.ColumnTypeInteger},
+	}).ToDB())
 
 	assert.NoError(err)
 
-	err = db.CreateKeyRange(context.TODO(), &qdb.KeyRange{
-		ShardID:        "sh2",
-		KeyRangeID:     "id2",
-		DistributionId: distribution,
-		LowerBound:     []byte("11"),
-	})
+	err = db.CreateKeyRange(context.TODO(), (&kr.KeyRange{
+		ShardID:      "sh2",
+		Distribution: distribution,
+		ID:           "id2",
+		LowerBound:   []interface{}{int64(11)},
+		ColumnTypes:  []string{qdb.ColumnTypeInteger},
+	}).ToDB())
 
 	assert.NoError(err)
 
@@ -917,7 +1063,10 @@ func TestJoins(t *testing.T) {
 						ShardID:      "sh2",
 						ID:           "id2",
 						Distribution: distribution,
-						LowerBound:   []byte("11"),
+						LowerBound: []interface{}{
+							int64(11),
+						},
+						ColumnTypes: []string{qdb.ColumnTypeInteger},
 					},
 				},
 				TargetSessionAttrs: "any",
@@ -936,7 +1085,10 @@ func TestJoins(t *testing.T) {
 						ShardID:      "sh2",
 						ID:           "id2",
 						Distribution: distribution,
-						LowerBound:   []byte("11"),
+						LowerBound: []interface{}{
+							int64(11),
+						},
+						ColumnTypes: []string{qdb.ColumnTypeInteger},
 					},
 				},
 				TargetSessionAttrs: "any",
@@ -986,7 +1138,8 @@ func TestUnnest(t *testing.T) {
 	distribution := "dd"
 
 	_ = db.CreateDistribution(context.TODO(), &qdb.Distribution{
-		ID: distribution,
+		ID:       distribution,
+		ColTypes: []string{qdb.ColumnTypeInteger},
 		Relations: map[string]*qdb.DistributedRelation{
 			"xxtt1": {
 				Name: "xxtt1",
@@ -999,21 +1152,23 @@ func TestUnnest(t *testing.T) {
 		},
 	})
 
-	err := db.CreateKeyRange(context.TODO(), &qdb.KeyRange{
-		ShardID:        "sh1",
-		KeyRangeID:     "id1",
-		DistributionId: distribution,
-		LowerBound:     []byte("1"),
-	})
+	err := db.CreateKeyRange(context.TODO(), (&kr.KeyRange{
+		ShardID:      "sh1",
+		Distribution: distribution,
+		ID:           "id1",
+		LowerBound:   []interface{}{int64(11)},
+		ColumnTypes:  []string{qdb.ColumnTypeInteger},
+	}).ToDB())
 
 	assert.NoError(err)
 
-	err = db.CreateKeyRange(context.TODO(), &qdb.KeyRange{
-		ShardID:        "sh2",
-		DistributionId: distribution,
-		KeyRangeID:     "id2",
-		LowerBound:     []byte("11"),
-	})
+	err = db.CreateKeyRange(context.TODO(), (&kr.KeyRange{
+		ShardID:      "sh2",
+		Distribution: distribution,
+		ID:           "id2",
+		LowerBound:   []interface{}{int64(11)},
+		ColumnTypes:  []string{qdb.ColumnTypeInteger},
+	}).ToDB())
 
 	assert.NoError(err)
 
@@ -1045,7 +1200,11 @@ func TestUnnest(t *testing.T) {
 						ShardID:      "sh2",
 						ID:           "id2",
 						Distribution: distribution,
-						LowerBound:   []byte("11"),
+						LowerBound: []interface{}{
+							int64(11),
+						},
+
+						ColumnTypes: []string{qdb.ColumnTypeInteger},
 					},
 				},
 				TargetSessionAttrs: "any",
@@ -1064,7 +1223,11 @@ func TestUnnest(t *testing.T) {
 						ShardID:      "sh2",
 						ID:           "id2",
 						Distribution: distribution,
-						LowerBound:   []byte("11"),
+						LowerBound: []interface{}{
+							int64(11),
+						},
+
+						ColumnTypes: []string{qdb.ColumnTypeInteger},
 					},
 				},
 				TargetSessionAttrs: "any",
@@ -1097,7 +1260,8 @@ func TestCopySingleShard(t *testing.T) {
 	distribution := "dd"
 
 	_ = db.CreateDistribution(context.TODO(), &qdb.Distribution{
-		ID: distribution,
+		ID:       distribution,
+		ColTypes: []string{qdb.ColumnTypeInteger},
 		Relations: map[string]*qdb.DistributedRelation{
 			"xx": {
 				Name: "xx",
@@ -1110,21 +1274,25 @@ func TestCopySingleShard(t *testing.T) {
 		},
 	})
 
-	err := db.CreateKeyRange(context.TODO(), &qdb.KeyRange{
-		ShardID:        "sh1",
-		DistributionId: distribution,
-		KeyRangeID:     "id1",
-		LowerBound:     []byte("1"),
-	})
+	err := db.CreateKeyRange(context.TODO(), (&kr.KeyRange{
+		ShardID:      "sh1",
+		Distribution: distribution,
+		ID:           "id1",
+		LowerBound:   []interface{}{int64(1)},
+
+		ColumnTypes: []string{qdb.ColumnTypeInteger},
+	}).ToDB())
 
 	assert.NoError(err)
 
-	err = db.CreateKeyRange(context.TODO(), &qdb.KeyRange{
-		ShardID:        "sh2",
-		DistributionId: distribution,
-		KeyRangeID:     "id2",
-		LowerBound:     []byte("11"),
-	})
+	err = db.CreateKeyRange(context.TODO(), (&kr.KeyRange{
+		ShardID:      "sh2",
+		Distribution: distribution,
+		ID:           "id2",
+		LowerBound:   []interface{}{int64(11)},
+
+		ColumnTypes: []string{qdb.ColumnTypeInteger},
+	}).ToDB())
 
 	assert.NoError(err)
 
@@ -1155,7 +1323,11 @@ func TestCopySingleShard(t *testing.T) {
 						ShardID:      "sh1",
 						ID:           "id1",
 						Distribution: distribution,
-						LowerBound:   []byte("1"),
+						LowerBound: []interface{}{
+							int64(1),
+						},
+
+						ColumnTypes: []string{qdb.ColumnTypeInteger},
 					},
 				},
 				TargetSessionAttrs: "any",

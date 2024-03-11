@@ -1,10 +1,11 @@
 package kr_test
 
 import (
+	"testing"
+
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestGetKRCondition(t *testing.T) {
@@ -26,8 +27,8 @@ func TestGetKRCondition(t *testing.T) {
 					{Column: "col1", HashFunction: "ident"},
 				},
 			},
-			krg:        &kr.KeyRange{ID: "kr1", LowerBound: []byte("0")},
-			upperBound: []byte("10"),
+			krg:        &kr.KeyRange{ID: "kr1", LowerBound: []interface{}{0}},
+			upperBound: []interface{}{10},
 			prefix:     "",
 			expected:   "col1 >= 0 AND col1 < 10",
 		},
@@ -40,8 +41,11 @@ func TestGetKRCondition(t *testing.T) {
 					{Column: "col1", HashFunction: "ident"},
 				},
 			},
-			krg:        &kr.KeyRange{ID: "kr1", LowerBound: []byte("0")},
-			upperBound: []byte("10"),
+			krg: &kr.KeyRange{ID: "kr1", LowerBound: []interface {
+			}{
+				0,
+			}},
+			upperBound: []interface{}{10},
 			prefix:     "rel",
 			expected:   "rel.col1 >= 0 AND rel.col1 < 10",
 		},
@@ -68,8 +72,8 @@ func TestGetKRCondition(t *testing.T) {
 					{Column: "col1", HashFunction: "ident"},
 				},
 			},
-			krg:        &kr.KeyRange{ID: "kr1", LowerBound: []byte("a")},
-			upperBound: []byte("b"),
+			krg:        &kr.KeyRange{ID: "kr1", LowerBound: []interface{}{"a"}},
+			upperBound: []interface{}{"b"},
 			prefix:     "",
 			expected:   "col1 >= 'a' AND col1 < 'b'",
 		},
@@ -80,5 +84,4 @@ func TestGetKRCondition(t *testing.T) {
 			"test case %d", i,
 		)
 	}
-
 }
